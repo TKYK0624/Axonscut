@@ -1,10 +1,8 @@
-// 1. 指向我們剛剛抽出來的本地檔案
 import { FFmpeg } from './ffmpeg-local/ffmpeg/index.js';
 import { fetchFile } from './ffmpeg-local/util/index.js';
 
-// --- 0. 環境初始化檢查 (Critical) ---
 if (!window.crossOriginIsolated) {
-    alert("⚠️ 系統警告：環境未正確配置 (crossOriginIsolated 為 false)！\nFFmpeg 需要 SharedArrayBuffer。\n請確保伺服器有設定 COOP/COEP 標頭，否則轉檔將無法執行。");
+    alert("⚠️ 系統警告：環境未正確配置，FFmpeg 無法執行。");
 }
 
 const dropZone = document.getElementById('drop-zone');
@@ -12,29 +10,45 @@ const fileInput = document.getElementById('file-input');
 const editor = document.getElementById('editor');
 const video = document.getElementById('main-video');
 const audio = document.getElementById('main-audio');
+const playPauseBtn = document.getElementById('play-pause-btn');
+const playhead = document.getElementById('playhead');
 const sliderStart = document.getElementById('slider-start');
 const sliderEnd = document.getElementById('slider-end');
 const exportBtn = document.getElementById('export-btn');
 
 let currentFile = null;
-let ffmpeg = null; // 預留 ffmpeg 實例
+let ffmpeg = null;
+let activeMedia = null; // 儲存目前正在播放的對象 (video 或 audio)
 const GAS_URL = 'https://script.google.com/macros/s/AKfycbzUbRtaQYOr-cIDDnGPj8xcE5Ur_YkAN5iUwPPDmDSA2GQyyIesfQLaQlE9vtUyIVtG/exec';
 
-// --- 1. 時間格式化函式 ---
+// --- 1. 時間格式化 ---
 function formatTime(seconds) {
     const s = parseFloat(seconds);
-    const hrs = Math.floor(s / 3600);
-    const mins = Math.floor((s % 3600) / 60);
+    const mins = Math.floor(s / 60);
     const secs = (s % 60).toFixed(1);
-
-    const hDisplay = hrs > 0 ? (hrs < 10 ? "0" + hrs : hrs) + ":" : "";
-    const mDisplay = (mins < 10 ? "0" + mins : mins) + ":";
-    const sDisplay = parseFloat(secs) < 10 ? "0" + secs : secs;
-    
-    return hDisplay + mDisplay + sDisplay;
+    return `${mins < 10 ? "0" + mins : mins}:${parseFloat(secs) < 10 ? "0" + secs : secs}`;
 }
 
-// --- 2. 檔案處理邏輯 ---
+// --- 修正 1: 修復拖放檔案 Bug ---
+['dragover', 'dragenter'].forEach(eventName => {
+    dropZone.addEventListener(eventName, (e) => {
+        e.preventDefault();
+        dropZone.classList.add('dragover');
+    });
+});
+
+['dragleave', 'drop'].forEach(eventName => {
+    dropZone.addEventListener(eventName, (e) => {
+        e.preventDefault();
+        dropZone.classList.remove('dragover');
+    });
+});
+
+dropZone.addEventListener('drop', (e) => {
+    const files = e.dataTransfer.files;
+    if (files.length > 0) handleFile(files[0]);
+});
+
 dropZone.onclick = () => fileInput.click();
 fileInput.onchange = (e) => handleFile(e.target.files[0]);
 
@@ -47,18 +61,57 @@ function handleFile(file) {
     editor.classList.remove('hidden');
 
     if (file.type.startsWith('video')) {
+        activeMedia = video;
         video.src = url;
         video.classList.remove('hidden');
-        video.onloadedmetadata = () => setupSlider(video.duration);
-        video.onclick = () => video.paused ? video.play() : video.pause();
+        audio.classList.add('hidden');
     } else {
+        activeMedia = audio;
         audio.src = url;
         audio.classList.remove('hidden');
-        audio.onloadedmetadata = () => setupSlider(audio.duration);
+        video.classList.add('hidden');
     }
+
+    activeMedia.onloadedmetadata = () => {
+        setupSlider(activeMedia.duration);
+        if (file.type.startsWith('video')) generateFilmstrip(video);
+    };
+
+    // 修正 3: 播放時更新進度線 (Playhead)
+    activeMedia.ontimeupdate = () => {
+        const progress = (activeMedia.currentTime / activeMedia.duration) * 100;
+        playhead.style.left = `${progress}%`;
+        
+        // 如果播到 End 滑桿位置，自動暫停或循環
+        if (activeMedia.currentTime >= parseFloat(sliderEnd.value)) {
+            activeMedia.pause();
+            activeMedia.currentTime = parseFloat(sliderStart.value);
+        }
+    };
 }
 
-// --- 3. 滑桿與膠捲初始化 ---
+// --- 修正 2: 播放按鈕邏輯 ---
+function togglePlay() {
+    if (!activeMedia) return;
+    if (activeMedia.paused) {
+        activeMedia.play();
+        playPauseBtn.innerText = "Pause";
+    } else {
+        activeMedia.pause();
+        playPauseBtn.innerText = "Play";
+    }
+}
+playPauseBtn.onclick = togglePlay;
+
+// 鍵盤空白鍵控制
+window.addEventListener('keydown', (e) => {
+    if (e.code === 'Space' && !editor.classList.contains('hidden')) {
+        e.preventDefault();
+        togglePlay();
+    }
+});
+
+// --- 3. 滑桿與時間連動 ---
 function setupSlider(duration) {
     sliderStart.max = duration;
     sliderEnd.max = duration;
@@ -66,13 +119,11 @@ function setupSlider(duration) {
     sliderEnd.value = duration;
     updateTimeText();
 
-    if (currentFile.type.startsWith('video')) generateFilmstrip(video);
-
     sliderStart.oninput = () => {
         if (parseFloat(sliderStart.value) >= parseFloat(sliderEnd.value)) {
             sliderStart.value = parseFloat(sliderEnd.value) - 0.1;
         }
-        video.currentTime = sliderStart.value;
+        activeMedia.currentTime = sliderStart.value; // 跳轉預覽
         updateTimeText();
     };
 
@@ -80,7 +131,7 @@ function setupSlider(duration) {
         if (parseFloat(sliderEnd.value) <= parseFloat(sliderStart.value)) {
             sliderEnd.value = parseFloat(sliderStart.value) + 0.1;
         }
-        video.currentTime = sliderEnd.value;
+        activeMedia.currentTime = sliderEnd.value; // 跳轉預覽
         updateTimeText();
     };
 }
@@ -90,19 +141,18 @@ function updateTimeText() {
     document.getElementById('end-time').innerText = `End: ${formatTime(sliderEnd.value)}`;
 }
 
-// --- 4. 膠捲縮圖生成 (Canvas) ---
+// --- 4. 膠捲生成 ---
 async function generateFilmstrip(videoElement) {
     const canvas = document.getElementById('filmstrip-canvas');
     const ctx = canvas.getContext('2d');
     const duration = videoElement.duration;
-    canvas.width = 1000; canvas.height = 100;
+    canvas.width = 1000; canvas.height = 80;
     const frameCount = 10; 
     const frameWidth = canvas.width / frameCount;
 
     const tempVideo = document.createElement('video');
     tempVideo.src = videoElement.src;
     tempVideo.muted = true;
-    tempVideo.load();
     await new Promise(r => tempVideo.onloadeddata = r);
 
     for (let i = 0; i < frameCount; i++) {
@@ -116,40 +166,34 @@ async function generateFilmstrip(videoElement) {
     }
 }
 
-// --- 5. FFmpeg 初始化 (v0.12+ 語法) ---
+// --- 5. FFmpeg 初始化 ---
 async function initFFmpeg() {
     if (ffmpeg) return ffmpeg; 
-
     ffmpeg = new FFmpeg();
-    
-    // 監聽轉檔進度，即時更新按鈕文字，避免 UI 凍結的錯覺
-    ffmpeg.on('progress', ({ progress, time }) => {
+    ffmpeg.on('progress', ({ progress }) => {
         exportBtn.innerText = `Processing... ${Math.round(progress * 100)}%`;
     });
-
-    // 載入本地核心 (這裡的路徑已經幫你修正為剛剛提取出來的 ffmpeg-local 資料夾)
     const baseURL = '/ffmpeg-local/core'; 
     await ffmpeg.load({
         coreURL: `${baseURL}/ffmpeg-core.js`,
         wasmURL: `${baseURL}/ffmpeg-core.wasm`
     });
-
     return ffmpeg;
 }
 
-// --- 6. 輸出按鈕行為 (GAS 紀錄 + FFmpeg 剪輯) ---
+// --- 6. 輸出行為 (修正 4 & 5) ---
 exportBtn.onclick = async () => {
     if (!currentFile) return;
-    if (!window.crossOriginIsolated) {
-        alert("無法轉檔：瀏覽器環境缺乏 COOP/COEP 標頭配置。請使用 Node.js Server 啟動。");
-        return;
-    }
 
     const start = sliderStart.value;
     const end = sliderEnd.value;
     const duration = (parseFloat(end) - parseFloat(start)).toFixed(2);
-    const inputName = 'input_video' + currentFile.name.substring(currentFile.name.lastIndexOf('.'));
-    const outputName = 'output.mp4';
+    
+    // 修正 4: 獲取原始副檔名
+    const originalExt = currentFile.name.split('.').pop(); 
+    const inputName = `input.${originalExt}`;
+    const outputName = `output.${originalExt}`;
+    const mimeType = currentFile.type;
 
     const logData = {
         fileName: currentFile.name,
@@ -161,66 +205,44 @@ exportBtn.onclick = async () => {
 
     try {
         exportBtn.disabled = true;
-        
-        // A. 先傳送資料到 GAS
         exportBtn.innerText = "Logging...";
         await sendToGAS(logData);
 
-        // B. 執行影片剪輯
-        exportBtn.innerText = "Loading Engine...";
         const ffmpegInstance = await initFFmpeg();
-
-        // 寫入檔案系統 (v0.12 API)
-        exportBtn.innerText = "Reading File...";
         await ffmpegInstance.writeFile(inputName, await fetchFile(currentFile));
 
-        // 執行指令 (需求書要求：-ss [start] -to [end] -c:v libx264 -c:a copy)
-        exportBtn.innerText = "Processing Video...";
+        // 修正 5: 秒切模式 (不重新編碼)
+        exportBtn.innerText = "Cutting (Fast)...";
         await ffmpegInstance.exec([
-            '-ss', `${start}`,
-            '-to', `${end}`,
-            '-i', inputName,
-            '-c:v', 'libx264',
-            '-c:a', 'copy',
+            '-ss', `${start}`,        // 快尋起點
+            '-to', `${end}`,          // 終點
+            '-i', inputName,          // 輸入放在 -ss 後面有時更精確，但 -c copy 模式下通常 OK
+            '-c', 'copy',             // 核心修改：直接流拷貝，不重新計算編碼
             outputName
         ]);
 
-        // 讀取產出檔案 (v0.12 API)
-        exportBtn.innerText = "Exporting...";
         const data = await ffmpegInstance.readFile(outputName);
-
-        // 觸發下載
-        const downloadUrl = URL.createObjectURL(new Blob([data.buffer], { type: 'video/mp4' }));
+        const downloadUrl = URL.createObjectURL(new Blob([data.buffer], { type: mimeType }));
         const a = document.createElement('a');
         a.href = downloadUrl;
         a.download = `axon_cut_${currentFile.name}`;
         a.click();
 
-        alert(`成功！\n資料已紀錄至試算表，剪裁影片已開始下載。`);
-
-        // 清理記憶體 (非常重要，避免多次剪輯後瀏覽器崩潰)
+        alert(`成功！\n檔案已利用秒切技術完成處理。`);
         await ffmpegInstance.deleteFile(inputName);
         await ffmpegInstance.deleteFile(outputName);
 
     } catch (e) {
-        console.error("發生錯誤:", e);
-        alert("操作失敗: " + e.message);
+        console.error(e);
+        alert("失敗: " + e.message);
     } finally {
         exportBtn.disabled = false;
         exportBtn.innerText = "Export & Log";
     }
 };
 
-// 封裝 GAS 傳送
 async function sendToGAS(data) {
     try {
-        await fetch(GAS_URL, {
-            method: 'POST',
-            mode: 'no-cors',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(data)
-        });
-    } catch (e) {
-        console.error("GAS Log failed", e);
-    }
+        await fetch(GAS_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify(data) });
+    } catch (e) { console.error("GAS failed", e); }
 }

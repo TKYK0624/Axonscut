@@ -1,8 +1,10 @@
 :root {
     --bg-color: #0a0b10;
     --accent-color: #3b82f6;
+    --error-color: #ef4444; /* 用於進度線 */
     --text-color: #e2e8f0;
     --gray: #1e293b;
+    --hover-gray: #334155;
 }
 
 body {
@@ -18,33 +20,48 @@ body {
 
 .container { width: 95%; max-width: 800px; text-align: center; }
 
+/* 修正 1: 拖曳懸停視覺效果 */
 .drop-zone {
     border: 2px dashed var(--gray);
     border-radius: 20px;
     padding: 60px;
     cursor: pointer;
-    transition: 0.3s;
+    transition: all 0.2s ease;
+}
+.drop-zone.dragover {
+    border-color: var(--accent-color);
+    background-color: rgba(59, 130, 246, 0.05);
 }
 
 .hidden { display: none; }
 
+.player-wrapper { position: relative; width: 100%; margin-bottom: 20px; }
 .player-wrapper video {
     width: 100%;
     border-radius: 12px;
-    margin-bottom: 20px;
-    cursor: pointer;
     background: #000;
 }
 
-/* 時間文字 */
+/* 修正 2: 播放按鈕 */
+.controls { margin-top: 10px; }
+.play-btn {
+    background: var(--gray);
+    border: 1px solid var(--accent-color);
+    color: var(--text-color);
+    padding: 8px 20px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 600;
+}
+
 .time-display {
     display: flex;
     justify-content: space-between;
     margin-bottom: 10px;
     font-weight: bold;
-    font-size: 1rem;
+    font-size: 0.9rem;
     color: var(--accent-color);
-    font-family: monospace; /* 等寬字體避免跳動 */
+    font-family: monospace;
 }
 
 .timeline-container {
@@ -57,7 +74,19 @@ body {
     border: 2px solid var(--gray);
 }
 
-#filmstrip-canvas { width: 100%; height: 100%; opacity: 0.5; }
+#filmstrip-canvas { width: 100%; height: 100%; opacity: 0.4; }
+
+/* 修正 3: 進度線樣式 */
+#playhead {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 2px;
+    height: 100%;
+    background: var(--error-color);
+    z-index: 5;
+    pointer-events: none; /* 防止遮擋滑桿點擊 */
+}
 
 .range-slider { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
 
@@ -93,4 +122,6 @@ input[type="range"]::-webkit-slider-thumb {
     border-radius: 8px;
     font-weight: bold;
     cursor: pointer;
+    transition: opacity 0.2s;
 }
+.export-btn:disabled { opacity: 0.5; cursor: not-allowed; }

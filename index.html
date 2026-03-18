@@ -11,7 +11,7 @@
     <div class="container">
         <div id="drop-zone" class="drop-zone">
             <div class="icon">＋</div>
-            <p>拖放 MP4 或 MP3 檔案至此</p>
+            <p>拖放 影片 或 音訊 檔案至此</p>
             <input type="file" id="file-input" accept="video/*,audio/*" hidden>
         </div>
 
@@ -19,15 +19,21 @@
             <div class="player-wrapper">
                 <video id="main-video" class="hidden"></video>
                 <audio id="main-audio" class="hidden"></audio>
+                
+                <div class="controls">
+                    <button id="play-pause-btn" class="play-btn">Play</button>
+                </div>
             </div>
 
             <div class="time-display">
-                <span id="start-time">00:00.0</span>
-                <span id="end-time">00:00.0</span>
+                <span id="start-time">Start: 00:00.0</span>
+                <span id="end-time">End: 00:00.0</span>
             </div>
 
             <div class="timeline-container">
                 <canvas id="filmstrip-canvas"></canvas>
+                <div id="playhead"></div>
+                
                 <div class="range-slider">
                     <div class="slider-track"></div>
                     <input type="range" id="slider-start" min="0" max="100" value="0" step="0.1">
