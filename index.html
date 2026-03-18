@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Axonscut</title>
+    <link rel="icon" href="data:,">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <div id="drop-zone" class="drop-zone">
+            <div class="icon">＋</div>
+            <p>拖放 MP4 或 MP3 檔案至此</p>
+            <input type="file" id="file-input" accept="video/*,audio/*" hidden>
+        </div>
+
+        <div id="editor" class="editor-container hidden">
+            <div class="player-wrapper">
+                <video id="main-video" class="hidden"></video>
+                <audio id="main-audio" class="hidden"></audio>
+            </div>
+
+            <div class="time-display">
+                <span id="start-time">00:00.0</span>
+                <span id="end-time">00:00.0</span>
+            </div>
+
+            <div class="timeline-container">
+                <canvas id="filmstrip-canvas"></canvas>
+                <div class="range-slider">
+                    <div class="slider-track"></div>
+                    <input type="range" id="slider-start" min="0" max="100" value="0" step="0.1">
+                    <input type="range" id="slider-end" min="0" max="100" value="100" step="0.1">
+                </div>
+            </div>
+            
+            <button id="export-btn" class="export-btn">Export & Log</button>
+        </div>
+    </div>
+    
+    <script type="module" src="script.js"></script>
+</body>
+</html>
