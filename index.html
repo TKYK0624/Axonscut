@@ -8,20 +8,28 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div class="container">
-        <div id="drop-zone" class="drop-zone">
-            <div class="icon">＋</div>
-            <p>拖放 影片 或 音訊 檔案至此</p>
-            <input type="file" id="file-input" accept="video/*,audio/*" hidden>
+    <div class="main-shell">
+        <div class="logo-wrapper">
+            <img src="assets/logo.png" alt="Axonscut Logo" class="top-right-logo">
         </div>
+        <div class="shortcut-back hidden" id="back-button" title="回到首頁">«</div>
+        <div class="container">
+            
+            <div id="drop-zone" class="drop-zone">
+                <div class="icon">＋</div>
+                <p>拖放 影片 或 音訊 檔案至此</p>
+                <span class="hint">或點擊此處選擇</span>
+                <input type="file" id="file-input" accept="video/*,audio/*" hidden>
+            </div>
 
-        <div id="editor" class="editor-container hidden">
+            <div id="editor" class="editor-container hidden">
             <div class="player-wrapper">
                 <video id="main-video" class="hidden"></video>
                 <audio id="main-audio" class="hidden"></audio>
-                
+
                 <div class="controls">
-                    <button id="play-pause-btn" class="play-btn">Play</button>
+                    <button id="play-pause-btn" class="play-btn">▶</button>
+                    <button id="speed-btn" class="speed-btn">1x</button>
                 </div>
             </div>
 
@@ -41,7 +49,7 @@
                 </div>
             </div>
             
-            <button id="export-btn" class="export-btn">Export & Log</button>
+            <button id="export-btn" class="export-btn">Export</button>
         </div>
     </div>
     
