@@ -18,6 +18,7 @@ const sliderEnd = document.getElementById('slider-end');
 const timelineContainer = document.querySelector('.timeline-container');
 const exportBtn = document.getElementById('export-btn');
 const backButton = document.getElementById('back-button'); // 取得退回鍵
+const appFooter = document.getElementById('app-footer'); // 👈 新增這行：取得你的版權 Footer
 
 let currentPlaybackRate = 1;
 let currentFile = null;
@@ -86,7 +87,8 @@ function handleFile(file) {
     dropZone.classList.add('hidden');
     editor.classList.remove('hidden');
     if (backButton) backButton.classList.remove('hidden'); 
-
+    if (appFooter) appFooter.style.display = 'none'; // 👈 新增這行：進入剪輯模式時，隱藏版權宣告
+    
     if (file.type.startsWith('video')) {
         activeMedia = video;
         video.src = url;
