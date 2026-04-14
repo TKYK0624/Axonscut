@@ -18,7 +18,7 @@ const sliderEnd = document.getElementById('slider-end');
 const timelineContainer = document.querySelector('.timeline-container');
 const exportBtn = document.getElementById('export-btn');
 const backButton = document.getElementById('back-button'); // 取得退回鍵
-const appFooter = document.getElementById('app-footer'); // 👈 新增這行：取得你的版權 Footer
+const appFooter = document.getElementById('app-footer'); // 👈 取得你的版權 Footer
 
 let currentPlaybackRate = 1;
 let currentFile = null;
@@ -35,8 +35,6 @@ let isDraggingPlayhead = false;
 let lastScrubX = null;
 let lastScrubTime = null;
 let currentSeekDelay = 50;
-
-const GAS_URL = 'https://script.google.com/macros/s/AKfycbzUbRtaQYOr-cIDDnGPj8xcE5Ur_YkAN5iUwPPDmDSA2GQyyIesfQLaQlE9vtUyIVtG/exec';
 
 // --- 1. 時間格式化 ---
 function formatTime(seconds) {
@@ -87,7 +85,7 @@ function handleFile(file) {
     dropZone.classList.add('hidden');
     editor.classList.remove('hidden');
     if (backButton) backButton.classList.remove('hidden'); 
-    if (appFooter) appFooter.style.display = 'none'; // 👈 新增這行：進入剪輯模式時，隱藏版權宣告
+    if (appFooter) appFooter.style.display = 'none'; // 👈 進入剪輯模式時，隱藏版權宣告
     
     if (file.type.startsWith('video')) {
         activeMedia = video;
@@ -123,7 +121,7 @@ function handleFile(file) {
             playPauseBtn.innerText = "▶";
         }
     };
-} // 修正：原程式碼此處大括號未閉合
+}
 
 // --- 4. 播放控制 (含消除外框 blur) ---
 function togglePlay() {
@@ -263,10 +261,6 @@ if (timelineContainer) {
             }
         }
     });
-}
-
-if (playhead) {
-    // 移除單獨的 pointerdown 監聽器，由 timelineContainer 處理
 }
 
 function scheduleScrub(clientX) {
@@ -420,8 +414,7 @@ exportBtn.onclick = async () => {
     
     try {
         exportBtn.disabled = true;
-        exportBtn.innerText = "Logging...";
-        await sendToGAS({ fileName: currentFile.name, duration: (end-start).toFixed(2) });
+        exportBtn.innerText = "Preparing..."; // 移除 GAS 後，改為顯示準備中
 
         const ff = await initFFmpeg();
         await ff.writeFile(inputName, await fetchFile(currentFile));
@@ -436,10 +429,5 @@ exportBtn.onclick = async () => {
         await ff.deleteFile(inputName);
         await ff.deleteFile(outputName);
     } catch (e) { alert("Error: " + e.message); }
-    finally { exportBtn.disabled = false; exportBtn.innerText = "Export & Log"; exportBtn.blur(); }
+    finally { exportBtn.disabled = false; exportBtn.innerText = "Export"; exportBtn.blur(); }
 };
-
-async function sendToGAS(data) {
-    try { await fetch(GAS_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify(data) }); } 
-    catch (e) { console.error(e); }
-}
